@@ -3,6 +3,8 @@
 #define NO_FCGI_DEFINES
 #include <fcgi_stdio.h>
 
+#include <arpa/inet.h>
+
 static uint8_t *index_data, *index_end;
 static uint32_t index_size, index_end_size;
 
@@ -39,10 +41,16 @@ static _Bool init(void) {
     return 1;
 }
 
-static void do_query(char *query)
+static void do_query(char *query, char *address)
 {
     if(!query) {
         //is this even possible?
+        return;
+    }
+
+    uint32_t ip;
+    if(!inet_pton(AF_INET, address, &ip)) {
+        FCGI_printf("Internal Error\n");
         return;
     }
 
@@ -78,7 +86,7 @@ static void do_query(char *query)
             return;
         }
 
-        int8_t r = database_write(_id, (uint8_t*)name, name_length, 0);
+        int8_t r = database_write(_id, (uint8_t*)name, name_length, ip);
         if(r == -2) {
             FCGI_printf("Failure (anti-spam)");
             return;
@@ -109,7 +117,7 @@ void http_thread(void *args)
 
         FCGI_fwrite(index_data, index_size, 1, FCGI_stdout);
 
-        do_query(getenv("QUERY_STRING"));
+        do_query(getenv("QUERY_STRING"), getenv("REMOTE_ADDR"));
 
         FCGI_fwrite(index_end, index_end_size, 1, FCGI_stdout);
 
