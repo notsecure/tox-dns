@@ -203,12 +203,12 @@ int main(void)
                     debug("query for %.*s\n", *name, name + 1);
                     uint8_t *key;
                     if((key = database_find(name + 1, *name))) {
-                        #define SIZE (TOX_ID_SIZE * 2 + 3)
+                        #define SIZE (TOX_ID_SIZE * 2 + 10)
                         *op++ = 0; *op++ = SIZE + 1;
                         *op++ = SIZE;
                         #undef SIZE
 
-                        memcpy(op, "id=", 3); op += 3;
+                        memcpy(op, "v=tox1;id=", 10); op += 10;
                         id_to_string(op, key); op += TOX_ID_SIZE * 2;
 
                         debug("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
