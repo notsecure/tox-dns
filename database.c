@@ -84,13 +84,8 @@ static _Bool allowip(uint32_t ip)
     return 1;
 }
 
-
-int8_t database_write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t src_ip)
+static int8_t _write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t src_ip)
 {
-    if(!allowip(src_ip)) {
-        return -2;
-    }
-
     uint16_t hash = hashfunc(name, name_length);
     if(table[hash] != ~0) {
         uint32_t offset;
@@ -113,10 +108,22 @@ int8_t database_write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t 
 
     datap = writeentry(datap, id, name, name_length);
     return 0;
-
 }
 
-uint8_t* database_find(uint8_t *name, uint8_t name_length)
+int8_t database_write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t src_ip)
+{
+    //assumes database_write only called by one thread
+    if(!allowip(src_ip)) {
+        return -2;
+    }
+
+    pthread_mutex_lock(&database_mutex);
+    int8_t res = _write(id, name, name_length, src_ip);
+    pthread_mutex_unlock(&database_mutex);
+    return res;
+}
+
+static uint8_t* _find(uint8_t *name, uint8_t name_length)
 {
     uint16_t hash = hashfunc(name, name_length);
     if(table[hash] != ~0) {
@@ -131,6 +138,14 @@ uint8_t* database_find(uint8_t *name, uint8_t name_length)
     }
 
     return NULL;
+}
+
+uint8_t* database_find(uint8_t *name, uint8_t name_length)
+{
+    pthread_mutex_lock(&database_mutex);
+    uint8_t *res = _find(name, name_length);
+    pthread_mutex_unlock(&database_mutex);
+    return res;
 }
 
 static _Bool init(void)
@@ -181,6 +196,12 @@ void database_thread(void *args)
         print("database_init() failed\n");
         return;
     }
-    //load, write, clear ip list
+
+    while(1) {
+        pthread_mutex_lock(&database_mutex);
+        //do stuff
+        pthread_mutex_unlock(&database_mutex);
+        sleep(1);
+    }
 }
 

@@ -46,6 +46,11 @@ static _Bool net_init(void)
 
 int main(void)
 {
+    if(pthread_mutex_init(&database_mutex, NULL) != 0) {
+        debug("pthread_mutex_init failed\n");
+        return 1;
+    }
+
     thread(http_thread, NULL);
     thread(database_thread, NULL);
 
