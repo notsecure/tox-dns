@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html style="color:#000;background-color:hsl(0,0%,30%)">
+<head>
+<title>uTox</title>
+<style>
+input{
+padding:6px 8px;
+border:1px solid;
+border-color:hsla(210,54%,20%,.15) hsla(210,54%,20%,.17) hsla(210,54%,20%,.2);
+}
+input[type="text"]{
+background:hsla(0,0%,100%,.9)padding-box;
+border-radius:2.5px 0 0 2.5px;
+width:470px
+}
+input[type="submit"]{
+background:linear-gradient(hsla(0,0%,100%,.8),hsla(0,0%,100%,.1))padding-box;
+border-radius:0 2.5px 2.5px 0;
+cursor:pointer;
+position:relative;
+}
+input[type="submit"]::-moz-focus-inner{
+padding:0;
+border:0 none;
+}
+</style>
+</head>
+<body style="margin:0">
+<div style="text-align:center">
+<a href="/"><img style="margin:3px 0 6px;border-style:none" src="logo.png"/></a>
+<div>
+<form action="/" style="display:inline">
+<input type="text" name="name" placeholder="Name" maxlength="32" autofocus/>
+<br/>
+<input type="text" name="id" placeholder="Tox ID" maxlength="76" autofocus/>
+<br/>
+<input type="submit" value="Register"/>
+</form>
+</div>
+*
+</div>
+</body>
+</html>
