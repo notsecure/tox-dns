@@ -174,7 +174,7 @@ static _Bool init(void)
 
     file = fopen("data", "rb");
     if(file) {
-        fseek(file, 0, SEEK_SET);
+        fseek(file, 0, SEEK_END);
         r = ftell(file);
         fseek(file, 0, SEEK_SET);
         dataq = datap = data + r;
