@@ -43,7 +43,8 @@ static _Bool init(void) {
 
 enum
 {
-    ERROR_INTERNAL = -6,
+    ERROR_INTERNAL = -7,
+    INVALID_CHARS_NAME = -6,
     INVALID_LENGTH = -5,
     INVALID_CHARS = -4,
     INVALID_CHECKSUM = -3,
@@ -60,6 +61,7 @@ static const char *result[] = {
     "Invalid Tox ID (invalid checksum)",
     "Invalid Tox ID (invalid characters)",
     "Invalid Tox ID (length)",
+    "Invalid Name (valid: a-z, 0-9)",
     "Internal Error",
 };
 
@@ -77,7 +79,16 @@ static int8_t do_query(char *query, char *address)
         name += 5;
         id += 3;
         c = name;
-        while(*c != '&'&& *c++){}
+        while(*c != '&'&& *c) {
+            if(*c >= 'A' && *c <= 'Z') {
+                *c++ = *c - 'A' + 'a';
+                continue;
+            }
+            if(!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9'))) {
+                return INVALID_CHARS_NAME;
+            }
+            c++;
+        }
         len = c - name;
         if(len >= MAX_NAME_LENGTH) {
             len = MAX_NAME_LENGTH;
