@@ -16,10 +16,12 @@ typedef struct
     TOX_ID_SIZE bytes tox id
  */
 
+static _Bool update_table;
 static uint32_t table[65536];
 static IP_ENTRY *iptable[65536];
 
-uint8_t data[65536 * 256], *datap;
+static uint8_t data[65536 * 256], *datap, *dataq;
+
 
 static uint16_t hashfunc(uint8_t *str, uint8_t length)
 {
@@ -100,10 +102,9 @@ static int8_t _write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t s
         offset = datap - data;
         *p++ = offset; *p++ = offset >> 8;
         *p++ = offset >> 16; *p++ = offset >> 24;
-        //write entry at [hash][i]
     } else {
         table[hash] = datap - data;
-        //write entry at [hash][0]
+        update_table = 1;
     }
 
     datap = writeentry(datap, id, name, name_length);
@@ -112,13 +113,13 @@ static int8_t _write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t s
 
 int8_t database_write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t src_ip)
 {
-    //assumes database_write only called by one thread
-    if(!allowip(src_ip)) {
-        return -2;
-    }
-
     pthread_mutex_lock(&database_mutex);
-    int8_t res = _write(id, name, name_length, src_ip);
+    int8_t res;
+    if(!allowip(src_ip)) {
+        res = -2;
+    } else {
+        res = _write(id, name, name_length, src_ip);
+    }
     pthread_mutex_unlock(&database_mutex);
     return res;
 }
@@ -176,7 +177,7 @@ static _Bool init(void)
         fseek(file, 0, SEEK_SET);
         r = ftell(file);
         fseek(file, 0, SEEK_SET);
-        datap = data + r;
+        dataq = datap = data + r;
 
         r  = fread(data, r, 1, file);
         fclose(file);
@@ -184,7 +185,7 @@ static _Bool init(void)
             return 0;
         }
     } else {
-        datap = data;
+        dataq = datap = data;
     }
 
     return 1;
@@ -197,11 +198,63 @@ void database_thread(void *args)
         return;
     }
 
+    FILE *file;
+    size_t r;
+    uint16_t sec = 0;
+
     while(1) {
         pthread_mutex_lock(&database_mutex);
-        //do stuff
+
+        /* append new data */
+        if(dataq != datap) {
+            file = fopen("data", "ab");
+            if(file) {
+                //!TODO: verify that file has correct size
+                r = fwrite(dataq, datap - dataq, 1, file);
+                fclose(file);
+
+                if(r != 1) {
+                    print("update error, database will be corrupted\n");
+                }
+            } else {
+                print("update error, database will be corrupted\n");
+            }
+
+            dataq = datap;
+        }
+
+        /* update table */
+        //!TODO: something better than just rewriting the whole table
+        if(update_table) {
+            update_table = 0;
+
+            file = fopen("table", "wb");
+            if(file) {
+                r = fwrite(table, sizeof(table), 1, file);
+                fclose(file);
+                if(r != 1) {
+                    print("update error, database will be corrupted\n");
+                }
+            } else {
+                print("update error, database will be corrupted\n");
+            }
+        }
+
+        /* clear the ip table every ~10 minutes */
+        if(sec == 60 * 10) {
+            int i;
+            for(i = 0; i != 0x10000; i++) {
+                if(iptable[i]) {
+                    free(iptable[i]);
+                    iptable[i] = NULL;
+                }
+            }
+            sec = 0;
+        }
+
         pthread_mutex_unlock(&database_mutex);
         sleep(1);
+        sec++;
     }
 }
 

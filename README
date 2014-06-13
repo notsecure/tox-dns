@@ -1,4 +1,4 @@
-IMPORTANT TODO: threading stuff, saving to disk
+IMPORTANT TODO: proper way of shutting down
 
 Example Usage:
 gcc -o dns.o *.c -lfcgi -Wall -pthread
