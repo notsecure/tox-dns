@@ -41,17 +41,33 @@ static _Bool init(void) {
     return 1;
 }
 
-static void do_query(char *query, char *address)
+enum
 {
-    if(!query) {
-        //is this even possible?
-        return;
-    }
+    ERROR_INTERNAL = -6,
+    INVALID_LENGTH = -5,
+    INVALID_CHARS = -4,
+    INVALID_CHECKSUM = -3,
+    REJECTED_SPAM = -2,
+    REJECTED_NAME = -1,
+    SUCCESS = 0,
+};
 
+static const char *result[] = {
+    "",
+    "Success",
+    "Name already taken",
+    "Failure (anti-spam)",
+    "Invalid Tox ID (invalid checksum)",
+    "Invalid Tox ID (invalid characters)",
+    "Invalid Tox ID (length)",
+    "Internal Error",
+};
+
+static int8_t do_query(char *query, char *address)
+{
     uint32_t ip;
     if(!inet_pton(AF_INET, address, &ip)) {
-        FCGI_printf("Internal Error\n");
-        return;
+        return ERROR_INTERNAL;
     }
 
     char *name = strstr(query, "name="), *id = strstr(query, "id="), *c;
@@ -71,36 +87,22 @@ static void do_query(char *query, char *address)
         while(*c != '&'&& *c){c++;}
         len = c - id;
         if(len != TOX_ID_SIZE * 2) {
-            FCGI_printf("Invalid Tox ID (length %u)\n", len);
-            return;
+            return INVALID_LENGTH;
         }
 
         uint8_t _id[TOX_ID_SIZE];
         if(!string_to_id(_id, (uint8_t*)id)) {
-            FCGI_printf("Invalid Tox ID (invalid characters)");
-            return;
+            return INVALID_CHARS;
         }
 
         if(!validate_id(_id)) {
-            FCGI_printf("Invalid Tox ID (invalid checksum)");
-            return;
+            return INVALID_CHECKSUM;
         }
 
-        int8_t r = database_write(_id, (uint8_t*)name, name_length, ip);
-        if(r == -2) {
-            FCGI_printf("Failure (anti-spam)");
-            return;
-        }
-
-        if(r == -1) {
-            FCGI_printf("Name already taken");
-            return;
-        }
-
-        FCGI_printf("Success");
+        return database_write(_id, (uint8_t*)name, name_length, ip);
 
     } else {
-        return;
+        return 1;
     }
 }
 
@@ -115,9 +117,17 @@ void http_thread(void *args)
     {
         FCGI_printf("Content-type: text/html\r\nStatus: 200 OK\r\n\r\n");
 
+
+        int8_t res = do_query(getenv("QUERY_STRING"), getenv("REMOTE_ADDR"));
+
+        if(strcmp(getenv("SCRIPT_NAME"), "/q") == 0) {
+            FCGI_printf("%i", res);
+            continue;
+        }
+
         FCGI_fwrite(index_data, index_size, 1, FCGI_stdout);
 
-        do_query(getenv("QUERY_STRING"), getenv("REMOTE_ADDR"));
+        FCGI_printf("%s", result[-res + 1]);
 
         FCGI_fwrite(index_end, index_end_size, 1, FCGI_stdout);
 
