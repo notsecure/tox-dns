@@ -47,6 +47,7 @@ _Bool crypto_init(void)
 
         crypto_box_keypair(key.public, key.private);
         r = fwrite(&key, sizeof(key), 1, file);
+        fclose(file);
 
         if(r != 1) {
             return 0;
@@ -56,13 +57,14 @@ _Bool crypto_init(void)
     return 1;
 }
 
-static uint8_t decode(uint8_t *dest, uint8_t *src)
+static int8_t decode(uint8_t *dest, uint8_t *src)
 {
-    uint8_t s[] = {4, 20, 32, 32, MAX_NAME_LENGTH, 0xFF}, *sp = s;
+    _Bool underscore = 0;
+    uint8_t s[] = {4, 20, 32, 16, MAX_NAME_LENGTH + 16, 0xFF}, *sp = s;
 
     uint8_t *p = src, *op = dest, *end, bits = 0, len, l = 0;
     *op = 0;
-    while((len = *p++) && *p != '_') {
+    while((len = *p++) && *p != underscore) {
         end = p + len;
         while(p != end) {
             uint8_t ch = *p++;
@@ -82,51 +84,59 @@ static uint8_t decode(uint8_t *dest, uint8_t *src)
                     break;
                 }
 
+                case '_': {
+                    if(!underscore) {
+                        underscore = 1;
+                        continue;
+                    }
+                    goto BREAK;
+                }
+
                 default: {
-                    return 0;
+                    return -1;
                 }
             }
 
             *op |= (ch << bits);
             bits += 5;
-            if(bits > 8) {
+            if(bits >= 8) {
                 bits -= 8;
                 l++;
+                op++;
                 if(l == *sp) {
                     l = 0;
                     sp++;
                     if(*sp == 0xFF) {
-                        return 0;
+                        return -1;
                     }
                     op += *sp++;
-                } else {
-                    op++;
                 }
-
 
                 *op = (ch >> (5 - bits));
             }
         }
     }
+    BREAK:
 
     if(sp - s != 4) {
-        return 0;
+        return -1;
     }
 
-    return l + 1;
+    return l;
 }
 
 static const char base32[32] = {"abcdefghijklmnopqrstuvwxyz012345"};
 
 #define _encode(a, b, c) \
 { \
-    uint8_t i; \
-    for(i = 0; i != c; i++ ) { \
+    uint8_t i = 0; \
+    while(i != c) { \
         *a++ = base32[((b[0] >> bits) | (b[1] << (8 - bits))) & 0x1F]; \
         bits += 5; \
         if(bits >= 8) { \
             bits -= 8; \
             b++; \
+            i++; \
         } \
     } \
 } \
@@ -135,8 +145,8 @@ static void encode(uint8_t *dest, uint8_t *src)
 {
     uint8_t bits = 0;
     _encode(dest, src, 4);
-    src += 32 + 32;
-    _encode(dest, src, TOX_ID_SIZE);
+    src += 20 + 32 + 16;
+    _encode(dest, src, 16 + TOX_ID_SIZE);
 }
 
 _Bool crypto_readrequest(uint8_t *out, uint8_t *text)
@@ -148,21 +158,24 @@ _Bool crypto_readrequest(uint8_t *out, uint8_t *text)
     int8_t len;
 
     len = decode(data, text);
-    if(len == -1) {
+    if(len == -1 || len < 16) {
+        debug("decode() failed\n");
         return 0;
     }
+
+    memset(data + 24 + 32, 0, 16);
+    memset(data + 4, 0, 20);
 
     crypto_box_beforenm(sharedkey, data + 24, key.private);
 
-    memset(data + 24 + 32, 0, 32);
-    memset(data + 4, 0, 20);
-
-    if(crypto_box_open_afternm(dest, src, 32 + len, data, sharedkey) != 0) {
+    if(crypto_box_open_afternm(dest, src, 16 + len, data, sharedkey) != 0) {
+        debug("crypto_box_open_afternm() failed\n");
         return 0;
     }
 
-    uint8_t *id = database_find(name, len);
+    uint8_t *id = database_find(dest + 32, len - 16);
     if(!id) {
+        debug("database_find() failed\n");
         return 0;
     }
 

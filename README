@@ -1,7 +1,7 @@
 IMPORTANT TODO: proper way of shutting down
 
 Example Usage:
-gcc -o dns.o *.c -lfcgi -Wall -pthread
+gcc -o dns.o *.c -lfcgi -lsodium -Wall -pthread
 spawn-fcgi -a127.0.0.1 -p9000 -n ./dns.o
 
 Server entry in nginx config:

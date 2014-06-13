@@ -231,20 +231,20 @@ int main(void)
                 debug("query for %.*s\n", *name, name + 1);
                 if(name[1] == '_') {
                     /* crypto query */
-                    name[1] = name[0] - 1;
-                    if(!crypto_readrequest(op + 13, name + 1)) {
+                    //name[1] = name[0] - 1;
+                    if(!crypto_readrequest(op + 13, name)) {
                         noresult();
                     }
 
-                    #define SIZE (100 + 10)
+                    #define SIZE (93 + 10)
                     *op++ = 0; *op++ = SIZE + 1;
                     *op++ = SIZE;
                     #undef SIZE
 
                     memcpy(op, "v=tox3;id=", 10); op += 10;
-                    op += 100;
+                    op += 93;
 
-                    debug("id: %.*s\n", 100, op - 100);
+                    debug("id: %.*s\n", 93, op - 93);
 
                 } else {
                     uint8_t *key;
