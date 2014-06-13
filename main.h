@@ -2,7 +2,7 @@
 #define MAIN_H
 
 #define MAX_NAME_LENGTH 64
-#define TOX_ID_SIZE 38
+#define TOX_ID_SIZE 38 //note: assumed to be smaller than MAX_NAME_LENGTH
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,6 +22,7 @@ pthread_mutex_t database_mutex;
 
 #include "http.h"
 #include "database.h"
+#include "crypto.h"
 #include "util.h"
 
 #ifndef NO_DEBUG

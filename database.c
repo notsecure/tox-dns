@@ -143,6 +143,8 @@ static uint8_t* _find(uint8_t *name, uint8_t name_length)
 
 uint8_t* database_find(uint8_t *name, uint8_t name_length)
 {
+    /*note: assumes that the data pointed by res wont be modified afterwards:
+     ->change this when needed by having it copied to a buffer instead*/
     pthread_mutex_lock(&database_mutex);
     uint8_t *res = _find(name, name_length);
     pthread_mutex_unlock(&database_mutex);

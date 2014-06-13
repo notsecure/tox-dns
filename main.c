@@ -46,6 +46,10 @@ static _Bool net_init(void)
 
 int main(void)
 {
+    if(!crypto_init()) {
+        return 1;
+    }
+
     if(pthread_mutex_init(&database_mutex, NULL) != 0) {
         debug("pthread_mutex_init failed\n");
         return 1;
@@ -95,8 +99,9 @@ int main(void)
         h->flags[0] = ((1 << 7) | (0 << 3) | (0 << 2) | (0 << 1) | (h->flags[0] & 1));
         h->flags[1] = (0);
 
-        uint16_t i, n, type, class, size;
         uint32_t ttl;
+        uint16_t i, n, type, class, size;
+        uint8_t len;
 
         n = HTONS(h->qdcount);
         for(i = 0; i != n; i++) {
@@ -147,12 +152,12 @@ int main(void)
                 goto CONTINUE;
             }
 
-            uint8_t name[512], *np = name;
-            while((*np++ = *p++)) {
-                if(p == end) {
+            while((len = *p++)) {
+                if(p + len + 1 > end){
                     debug("malformed resource\n");
                     goto CONTINUE;
                 }
+                p += len;
             }
 
             if(p + 10 > end) {
@@ -170,7 +175,7 @@ int main(void)
                 goto CONTINUE;
             }
 
-            debug("NAME: %s TYPE: %u CLASS: %u TTL: %u size: %u\n", name, type, class, ttl, size);
+            debug("TYPE: %u CLASS: %u TTL: %u size: %u\n", type, class, ttl, size);
 
             switch(type) {
                 case 41: {
@@ -205,9 +210,35 @@ int main(void)
                     memcpy(op, ip, 4); op += 4;
                 } else {
                     /* TXT */
+                    #define noresult() *op++ = 0; *op++ = 1; *op++ = 0; goto SEND;
+                    if(*name == 0) {
+                        noresult();
+                    }
+
                     debug("query for %.*s\n", *name, name + 1);
-                    uint8_t *key;
-                    if((key = database_find(name + 1, *name))) {
+                    if(name[1] == '_') {
+                        /* crypto query */
+                        name[1] = name[0] - 1;
+                        if(!crypto_readrequest(op + 13, name + 1)) {
+                            noresult();
+                        }
+
+                        #define SIZE (100 + 10)
+                        *op++ = 0; *op++ = SIZE + 1;
+                        *op++ = SIZE;
+                        #undef SIZE
+
+                        memcpy(op, "v=tox3;id=", 10); op += 10;
+                        op += 100;
+
+                        debug("id: %.*s\n", 100, op - 100);
+
+                    } else {
+                        uint8_t *key;
+                        if((key = database_find(name + 1, *name)) == NULL) {
+                            noresult();
+                        }
+
                         #define SIZE (TOX_ID_SIZE * 2 + 10)
                         *op++ = 0; *op++ = SIZE + 1;
                         *op++ = SIZE;
@@ -217,18 +248,15 @@ int main(void)
                         id_to_string(op, key); op += TOX_ID_SIZE * 2;
 
                         debug("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
-                    } else {
-                        *op++ = 0; *op++ = 1;
-                        *op++ = 0;
-
-                        debug("does not exist\n");
                     }
+                    #undef noresult
                 }
             } else {
                 continue;
                 //h->qdcount = 0;
             }
 
+            SEND:
             sendto(sock, data, op - data, 0, (struct sockaddr*)&addr, addrlen);
             debug("sent response!\n");
         } else {
