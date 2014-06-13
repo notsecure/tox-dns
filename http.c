@@ -81,7 +81,7 @@ static int8_t do_query(char *query, char *address)
         c = name;
         while(*c != '&'&& *c) {
             if(*c >= 'A' && *c <= 'Z') {
-                *c++ = *c - 'A' + 'a';
+                *c = *c - 'A' + 'a'; c++;
                 continue;
             }
             if(!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9'))) {

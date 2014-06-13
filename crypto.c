@@ -144,9 +144,9 @@ static const char base32[32] = {"abcdefghijklmnopqrstuvwxyz012345"};
 static void encode(uint8_t *dest, uint8_t *src)
 {
     uint8_t bits = 0;
-    _encode(dest, src, 4);
-    src += 20 + 32 + 16;
-    _encode(dest, src, 16 + TOX_ID_SIZE);
+    memmove(src + 4, src + 24 + 32 + 16, 16 + TOX_ID_SIZE);
+    src[4 + 16 + TOX_ID_SIZE] = 0;
+    _encode(dest, src, 4 + 16 + TOX_ID_SIZE);
 }
 
 _Bool crypto_readrequest(uint8_t *out, uint8_t *text)
@@ -184,7 +184,6 @@ _Bool crypto_readrequest(uint8_t *out, uint8_t *text)
 
     crypto_box_afternm(src, dest, 32 + TOX_ID_SIZE, data, sharedkey);
 
-    name[TOX_ID_SIZE] = 0;
     encode(out, data);
 
     return 1;
