@@ -37,4 +37,10 @@ pthread_mutex_t database_mutex;
 #define print(...)
 #endif
 
+#ifdef DEBUG_HARD
+#define debug_hard(...) printf(__VA_ARGS__)
+#else
+#define debug_hard(...)
+#endif
+
 #endif // MAIN_H

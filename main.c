@@ -129,7 +129,20 @@ int main(void)
 
             type = (p[1] | (p[0] << 8)); p += 2;
             class = (p[1] | (p[0] << 8)); p += 2;
-            debug("QTYPE: %u QCLASS: %u\n", type, class);
+            debug_hard("QTYPE: %u QCLASS: %u\n", type, class);
+
+            switch(type) {
+                case 1: //A
+                case 15: //MX
+                case 16: //TXT
+                case 28: //AAAA
+                    break;
+
+                default: {
+                    debug("unknown QTYPE %u\n", type);
+                    break;
+                }
+            }
 
             if(i != 0) {
                 debug("more than one question\n");
@@ -175,7 +188,7 @@ int main(void)
                 goto CONTINUE;
             }
 
-            debug("TYPE: %u CLASS: %u TTL: %u size: %u\n", type, class, ttl, size);
+            debug_hard("TYPE: %u CLASS: %u TTL: %u size: %u\n", type, class, ttl, size);
 
             switch(type) {
                 case 41: {
@@ -192,73 +205,72 @@ int main(void)
             p += size;
         }
 
-        if(p == end) {
-            if(atype == 1 || atype == 16) {
-                h->ancount = HTONS(1);
-                h->qdcount = HTONS(1);
-                h->arcount = 0;
+        if(p == end && atype) {
+            h->ancount = HTONS(1);
+            h->qdcount = HTONS(1);
+            h->arcount = 0;
 
-                *op++ = 0xC0; *op++ = 12; //name at +12
-                *op++ = 0; *op++ = atype; //type
-                *op++ = 0; *op++ = 1; //class: IN
+            *op++ = 0xC0; *op++ = 12; //name at +12
+            *op++ = 0; *op++ = atype; //type
+            *op++ = 0; *op++ = 1; //class: IN
 
-                memset(op, 0, 4); op += 4; //ttl: 0
+            memset(op, 0, 4); op += 4; //ttl: 0
 
-                if(atype == 1) {
-                    /* A */
-                    *op++ = 0; *op++ = 4;
-                    memcpy(op, ip, 4); op += 4;
-                } else {
-                    /* TXT */
-                    #define noresult() *op++ = 0; *op++ = 1; *op++ = 0; goto SEND;
-                    if(*name == 0) {
+            if(atype == 1) {
+                /* A */
+                *op++ = 0; *op++ = 4;
+                memcpy(op, ip, 4); op += 4;
+            }
+            else if(atype == 16) {
+                /* TXT */
+                #define noresult() *op++ = 0; *op++ = 1; *op++ = 0; goto SEND;
+                if(*name == 0) {
+                    noresult();
+                }
+
+                debug("query for %.*s\n", *name, name + 1);
+                if(name[1] == '_') {
+                    /* crypto query */
+                    name[1] = name[0] - 1;
+                    if(!crypto_readrequest(op + 13, name + 1)) {
                         noresult();
                     }
 
-                    debug("query for %.*s\n", *name, name + 1);
-                    if(name[1] == '_') {
-                        /* crypto query */
-                        name[1] = name[0] - 1;
-                        if(!crypto_readrequest(op + 13, name + 1)) {
-                            noresult();
-                        }
+                    #define SIZE (100 + 10)
+                    *op++ = 0; *op++ = SIZE + 1;
+                    *op++ = SIZE;
+                    #undef SIZE
 
-                        #define SIZE (100 + 10)
-                        *op++ = 0; *op++ = SIZE + 1;
-                        *op++ = SIZE;
-                        #undef SIZE
+                    memcpy(op, "v=tox3;id=", 10); op += 10;
+                    op += 100;
 
-                        memcpy(op, "v=tox3;id=", 10); op += 10;
-                        op += 100;
+                    debug("id: %.*s\n", 100, op - 100);
 
-                        debug("id: %.*s\n", 100, op - 100);
-
-                    } else {
-                        uint8_t *key;
-                        if((key = database_find(name + 1, *name)) == NULL) {
-                            noresult();
-                        }
-
-                        #define SIZE (TOX_ID_SIZE * 2 + 10)
-                        *op++ = 0; *op++ = SIZE + 1;
-                        *op++ = SIZE;
-                        #undef SIZE
-
-                        memcpy(op, "v=tox1;id=", 10); op += 10;
-                        id_to_string(op, key); op += TOX_ID_SIZE * 2;
-
-                        debug("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
+                } else {
+                    uint8_t *key;
+                    if((key = database_find(name + 1, *name)) == NULL) {
+                        noresult();
                     }
-                    #undef noresult
+
+                    #define SIZE (TOX_ID_SIZE * 2 + 10)
+                    *op++ = 0; *op++ = SIZE + 1;
+                    *op++ = SIZE;
+                    #undef SIZE
+
+                    memcpy(op, "v=tox1;id=", 10); op += 10;
+                    id_to_string(op, key); op += TOX_ID_SIZE * 2;
+
+                    debug("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
                 }
+                #undef noresult
             } else {
-                continue;
-                //h->qdcount = 0;
+                /* empty response for unhandled queries */
+                *op++ = 0; *op++ = 0;
             }
 
             SEND:
             sendto(sock, data, op - data, 0, (struct sockaddr*)&addr, addrlen);
-            debug("sent response!\n");
+            debug_hard("sent response!\n");
         } else {
             debug("malformed packet\n");
         }
