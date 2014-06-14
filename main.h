@@ -4,6 +4,8 @@
 #define MAX_NAME_LENGTH 64
 #define TOX_ID_SIZE 38 //note: assumed to be smaller than MAX_NAME_LENGTH
 
+#define TOX3_RESPONSE_SIZE 87
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -19,6 +21,17 @@
 #include <pthread.h>
 
 pthread_mutex_t database_mutex;
+
+struct
+{
+    uint8_t public[32];
+    uint8_t private[32];
+}key;
+
+struct
+{
+    uint64_t registered, requests;
+}stat;
 
 #include "http.h"
 #include "database.h"

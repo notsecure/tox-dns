@@ -120,6 +120,7 @@ int8_t database_write(uint8_t *id, uint8_t *name, uint8_t name_length, uint32_t 
     } else {
         res = _write(id, name, name_length, src_ip);
     }
+    stat.registered++;
     pthread_mutex_unlock(&database_mutex);
     return res;
 }
@@ -148,6 +149,9 @@ uint8_t* database_find(uint8_t *name, uint8_t name_length)
     pthread_mutex_lock(&database_mutex);
     uint8_t *res = _find(name, name_length);
     pthread_mutex_unlock(&database_mutex);
+    if(res) {
+        stat.requests++;
+    }
     return res;
 }
 
@@ -188,6 +192,15 @@ static _Bool init(void)
         }
     } else {
         dataq = datap = data;
+    }
+
+    file = fopen("stat", "rb");
+    if(file) {
+        r = fread(&stat, sizeof(stat), 1, file);
+        fclose(file);
+        if(r != 1) {
+            return 0;
+        }
     }
 
     return 1;
@@ -252,6 +265,20 @@ void database_thread(void *args)
                 }
             }
             sec = 0;
+        }
+
+        /* write stat file ~30 seconds */
+        if((sec % 30) == 0) {
+            file = fopen("stat", "wb");
+            if(file) {
+                r = fwrite(&stat, sizeof(stat), 1, file);
+                fclose(file);
+                if(r != 1) {
+                    print("failed to update stat\n");
+                }
+            } else {
+                print("failed to update stat\n");
+            }
         }
 
         pthread_mutex_unlock(&database_mutex);

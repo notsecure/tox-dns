@@ -21,12 +21,6 @@
 #error "NONCEBYTES not 24"
 #endif
 
-static struct
-{
-    uint8_t public[32];
-    uint8_t private[32];
-}key;
-
 _Bool crypto_init(void)
 {
     FILE *file;
@@ -127,26 +121,17 @@ static int8_t decode(uint8_t *dest, uint8_t *src)
 
 static const char base32[32] = {"abcdefghijklmnopqrstuvwxyz012345"};
 
-#define _encode(a, b, c) \
-{ \
-    uint8_t i = 0; \
-    while(i != c) { \
-        *a++ = base32[((b[0] >> bits) | (b[1] << (8 - bits))) & 0x1F]; \
-        bits += 5; \
-        if(bits >= 8) { \
-            bits -= 8; \
-            b++; \
-            i++; \
-        } \
-    } \
-} \
-
-static void encode(uint8_t *dest, uint8_t *src)
+static void encode(uint8_t *dest, uint8_t *src, uint8_t size)
 {
-    uint8_t bits = 0;
-    memmove(src + 4, src + 24 + 32 + 16, 16 + TOX_ID_SIZE);
-    src[4 + 16 + TOX_ID_SIZE] = 0;
-    _encode(dest, src, 4 + 16 + TOX_ID_SIZE);
+    uint8_t *a = dest, *b = src, *end = b + size, bits = 0;
+    while(b != end) {
+        *a++ = base32[((b[0] >> bits) | (b[1] << (8 - bits))) & 0x1F];
+        bits += 5;
+        if(bits >= 8) {
+            bits -= 8;
+            b++;
+        }
+    }
 }
 
 _Bool crypto_readrequest(uint8_t *out, uint8_t *text)
@@ -184,7 +169,7 @@ _Bool crypto_readrequest(uint8_t *out, uint8_t *text)
 
     crypto_box_afternm(src, dest, 32 + TOX_ID_SIZE, data, sharedkey);
 
-    encode(out, data);
+    encode(out, src + 16, 16 + TOX_ID_SIZE);
 
     return 1;
 

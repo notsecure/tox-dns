@@ -1,27 +1,22 @@
 #include "main.h"
 
+static uint8_t hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
 static void to_hex(uint8_t *a, uint8_t *p, int size)
 {
-    uint8_t b, c, *end = p + size;
+    uint8_t b, *end = p + size;
 
     while(p != end) {
         b = *p++;
 
-        c = (b & 0xF);
-        b = (b >> 4);
-
-        if(b < 10) {
-            *a++ = b + '0';
-        } else {
-            *a++ = b - 10 + 'A';
-        }
-
-        if(c < 10) {
-            *a++ = c + '0';
-        } else {
-            *a++ = c  - 10 + 'A';
-        }
+        *a++ = hex[b >> 4];
+        *a++ = hex[b & 0xF];
     }
+}
+
+void key_to_string(uint8_t *dest, uint8_t *src)
+{
+    to_hex(dest, src, 32);
 }
 
 void id_to_string(uint8_t *dest, uint8_t *src)

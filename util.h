@@ -1,3 +1,8 @@
+/* convert public key to string
+ *  notes: dest must be (32 * 2) bytes large, src must be 32 bytes large
+ */
+void key_to_string(uint8_t *dest, uint8_t *src);
+
 /* convert tox id to string
  *  notes: dest must be (TOX_ID_SIZE * 2) bytes large, src must be TOX_ID_SIZE bytes large
  */

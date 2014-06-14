@@ -128,10 +128,26 @@ void http_thread(void *args)
     {
         FCGI_printf("Content-type: text/html\r\nStatus: 200 OK\r\n\r\n");
 
+        char *name = getenv("SCRIPT_NAME");
+        _Bool q = 0;
+
+        if(name[0] == '/' && name[1] == 'q') {
+            if(name[2] == 0) {
+                q = 1;
+            } else if(strcmp(name + 2, "key") == 0) {
+                uint8_t k[64];
+                key_to_string(k, key.public);
+                FCGI_fwrite(k, sizeof(k), 1, FCGI_stdout);
+                continue;
+            } else if(strcmp(name + 2, "stat") == 0) {
+                FCGI_printf("Number of registered names: %u<br/>Number of successful Tox DNS requests: %u\n", stat.registered, stat.requests);
+                continue;
+            }
+        }
 
         int8_t res = do_query(getenv("QUERY_STRING"), getenv("REMOTE_ADDR"));
 
-        if(strcmp(getenv("SCRIPT_NAME"), "/q") == 0) {
+        if(q) {
             FCGI_printf("%i", res);
             continue;
         }
