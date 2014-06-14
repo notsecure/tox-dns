@@ -211,14 +211,17 @@ int main(void)
                 *op++ = 0; *op++ = atype; //type
                 *op++ = 0; *op++ = 1; //class: IN
 
-                memset(op, 0, 4); op += 4; //ttl: 0
+                /* ttl: 2048s for A record, 0 for TXT record*/
+                *op++ = 0; *op++ = 0;
+                *op++ = (atype == 1) ? 8 : 0;
+                *op++ = 0;
 
                 if(atype == 1) {
                     /* A */
                     *op++ = 0; *op++ = 4;
                     memcpy(op, ip, 4); op += 4;
                 }
-                else if(atype == 16) {
+                else {
                     /* TXT */
                     #define noresult() *op++ = 0; *op++ = 1; *op++ = 0; goto SEND;
                     if(*name == 0) {
