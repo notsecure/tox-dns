@@ -74,7 +74,8 @@ int main(void)
         HEADER *h = (void*)data;
         uint8_t *p = data + sizeof(HEADER), *op, *end = data + len, *name, atype = 0;
 
-        debug("request from: %u.%u.%u.%u:%u (%u, %u)\n", addr.ip[0], addr.ip[1], addr.ip[2], addr.ip[3], HTONS(addr.port), len, HTONS(h->id));
+        debug("request from: %u.%u.%u.%u:%u (%u, %u, %u %u %u %u)\n", addr.ip[0], addr.ip[1], addr.ip[2], addr.ip[3], HTONS(addr.port), len, HTONS(h->id),
+              HTONS(h->qdcount), HTONS(h->ancount), HTONS(h->nscount), HTONS(h->arcount));
 
         if(h->flags[0] & (0x80 | 0x78)) {
             //only care about requests and QUERY
@@ -133,9 +134,9 @@ int main(void)
 
             switch(type) {
                 case 1: //A
-                case 15: //MX
+                //case 15: //MX
                 case 16: //TXT
-                case 28: //AAAA
+                //case 28: //AAAA
                     break;
 
                 default: {
@@ -144,19 +145,15 @@ int main(void)
                 }
             }
 
-            if(i != 0) {
-                debug("more than one question\n");
-                continue;
-            }
-
             if(type == 0 || type >= 256) {
                 debug("zero/large type\n");
                 continue;
             }
 
-            op = p;
             atype = type;
         }
+
+        op = p;
 
         n = HTONS(h->arcount);
         for(i = 0; i != n; i++) {
@@ -205,67 +202,65 @@ int main(void)
             p += size;
         }
 
-        if(p == end && atype) {
-            h->ancount = HTONS(1);
-            h->qdcount = HTONS(1);
+        if(p == end) {
             h->arcount = 0;
+            if(atype == 1 || atype == 16) {
+                h->ancount = HTONS(1);
 
-            *op++ = 0xC0; *op++ = 12; //name at +12
-            *op++ = 0; *op++ = atype; //type
-            *op++ = 0; *op++ = 1; //class: IN
+                *op++ = 0xC0; *op++ = 12; //name at +12
+                *op++ = 0; *op++ = atype; //type
+                *op++ = 0; *op++ = 1; //class: IN
 
-            memset(op, 0, 4); op += 4; //ttl: 0
+                memset(op, 0, 4); op += 4; //ttl: 0
 
-            if(atype == 1) {
-                /* A */
-                *op++ = 0; *op++ = 4;
-                memcpy(op, ip, 4); op += 4;
-            }
-            else if(atype == 16) {
-                /* TXT */
-                #define noresult() *op++ = 0; *op++ = 1; *op++ = 0; goto SEND;
-                if(*name == 0) {
-                    noresult();
+                if(atype == 1) {
+                    /* A */
+                    *op++ = 0; *op++ = 4;
+                    memcpy(op, ip, 4); op += 4;
                 }
-
-                debug("query for %.*s\n", *name, name + 1);
-                if(name[1] == '_') {
-                    /* crypto query */
-                    //name[1] = name[0] - 1;
-                    if(!crypto_readrequest(op + 13, name)) {
+                else if(atype == 16) {
+                    /* TXT */
+                    #define noresult() *op++ = 0; *op++ = 1; *op++ = 0; goto SEND;
+                    if(*name == 0) {
                         noresult();
                     }
 
-                    #define SIZE (TOX3_RESPONSE_SIZE + 10)
-                    *op++ = 0; *op++ = SIZE + 1;
-                    *op++ = SIZE;
-                    #undef SIZE
+                    debug("query for %.*s\n", *name, name + 1);
+                    if(name[1] == '_') {
+                        /* crypto query */
+                        //name[1] = name[0] - 1;
+                        if(!crypto_readrequest(op + 13, name)) {
+                            noresult();
+                        }
 
-                    memcpy(op, "v=tox3;id=", 10); op += 10;
-                    op += TOX3_RESPONSE_SIZE;
+                        #define SIZE (TOX3_RESPONSE_SIZE + 10)
+                        *op++ = 0; *op++ = SIZE + 1;
+                        *op++ = SIZE;
+                        #undef SIZE
 
-                    debug_hard("id: %.*s\n", TOX3_RESPONSE_SIZE, op - TOX3_RESPONSE_SIZE);
+                        memcpy(op, "v=tox3;id=", 10); op += 10;
+                        op += TOX3_RESPONSE_SIZE;
 
-                } else {
-                    uint8_t *key;
-                    if((key = database_find(name + 1, *name)) == NULL) {
-                        noresult();
+                        debug_hard("id: %.*s\n", TOX3_RESPONSE_SIZE, op - TOX3_RESPONSE_SIZE);
+
+                    } else {
+                        uint8_t *key;
+                        if((key = database_find(name + 1, *name)) == NULL) {
+                            noresult();
+                        }
+
+                        #define SIZE (TOX_ID_SIZE * 2 + 10)
+                        *op++ = 0; *op++ = SIZE + 1;
+                        *op++ = SIZE;
+                        #undef SIZE
+
+                        memcpy(op, "v=tox1;id=", 10); op += 10;
+                        id_to_string(op, key); op += TOX_ID_SIZE * 2;
+
+                        debug_hard("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
                     }
-
-                    #define SIZE (TOX_ID_SIZE * 2 + 10)
-                    *op++ = 0; *op++ = SIZE + 1;
-                    *op++ = SIZE;
-                    #undef SIZE
-
-                    memcpy(op, "v=tox1;id=", 10); op += 10;
-                    id_to_string(op, key); op += TOX_ID_SIZE * 2;
-
-                    debug_hard("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
+                    #undef noresult
                 }
-                #undef noresult
-            } else {
-                /* empty response for unhandled queries */
-                *op++ = 0; *op++ = 0;
             }
 
             SEND:
