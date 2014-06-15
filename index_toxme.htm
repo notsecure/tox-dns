@@ -1,0 +1,132 @@
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tox ID Service</title>
+<style>
+body {
+background-color:#5e7c88;
+-webkit-font-smoothing:antialiased;
+font-family:Lato;
+margin:0;
+}
+.header_nav {
+text-align:left;
+padding:15px;
+background-color:#ecf0f1;
+}
+.header_nav > .icon {
+height:45px;
+display:block;
+}
+ 
+.main_content {
+margin:0 auto;
+text-align:center;
+color:white;
+}
+.main_content a {
+font-weight:bold;
+text-decoration:none;
+color:white;
+}
+.main_content a:hover {
+border-bottom:1px rgba(255, 255, 255, 0.90) dashed;
+}
+ 
+.chunk {
+padding:20px;
+}
+.chunk.hello {
+}
+.chunk.dark {
+background-color:#24221f;
+}
+ 
+.tagline {
+font-size:40px;
+margin:0;
+color:white;
+}
+.chunk.dark .tagline {
+color:#feb41c;
+}
+.de-emphasize {
+color: rgb(230, 230, 230)
+}
+.addself_form {
+max-width:500px;
+font-size:0;
+margin:0 auto;
+}
+.addself_form .formbit {
+margin-bottom:10px;
+}
+.addself_form label {
+font-size:16px;
+margin-left:5px;
+}
+.addself_form input,
+.addself_form label.left {
+-webkit-font-smoothing:antialiased;
+font-size:20px;
+font-family:"Helvetica Neue", sans-serif;
+border:none;
+box-sizing:border-box;
+outline:none;
+margin:0;
+padding:10px 25px;
+display:inline-block;
+}
+.addself_form label.left {
+border-radius:9001px 0 0 9001px;
+background-color:#feb41c;
+color:black;
+width:110px;
+}
+.addself_form input {
+border-radius:0 9001px 9001px 0;
+}
+.addself_form .submit {
+border-radius:9001px 9001px;
+background-color:#feb41c;
+font-weight:bold;
+}
+ 
+.footer {
+padding:10px;
+}
+ 
+</style>
+</head>
+<body>
+<header class="header_nav">
+<a class="icon" href="/" title="Tox"></a>
+</header>
+<article class="main_content">
+<div class="chunk hello dark">
+<img style="border-style:none" src="logo.png"/></a>
+<form class="addself_form" action="/">
+<div class="formbit">
+<label class="left" for="name">Name</label>
+<input name="name" id="name" type="text" placeholder="Tox User">
+</div>
+<div class="formbit">
+<label class="left" for="tox_id">Tox ID</label>
+<input name="id" id="tox_id" type="text" placeholder="ABCDEF00...">
+</div>
+<div class="formbit">
+<input type="submit" class="submit" value="Publish!">
+</div>
+</form>
+<div style="height:40px">*</div>
+</div>
+<div id="footer" class="footer">
+<p>
+<small class="de-emphasize">Tox id shortening service.</small>
+<small class="de-emphasize"><a href="https://github.com/notsecure/tox-dns">code.</a></small>
+</p>
+</div>
+</article>
+</body>
+</html>

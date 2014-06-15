@@ -12,7 +12,7 @@ static _Bool init(void) {
     FILE *file;
     size_t r;
 
-    file = fopen("index.htm", "rb");
+    file = fopen(INDEX_NAME, "rb");
     if(!file) {
         return 0;
     }

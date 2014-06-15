@@ -38,6 +38,10 @@ struct
 #include "crypto.h"
 #include "util.h"
 
+#ifndef INDEX_NAME
+#define INDEX_NAME "index.htm"
+#endif
+
 #ifndef NO_DEBUG
 #define debug(...) printf(__VA_ARGS__)
 #else
