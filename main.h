@@ -4,7 +4,7 @@
 #define MAX_NAME_LENGTH 64
 #define TOX_ID_SIZE 38 //note: assumed to be smaller than MAX_NAME_LENGTH
 
-#define TOX3_RESPONSE_SIZE 87
+#define TOXDNS3_RESPONSE_SIZE 90
 
 #include <stdlib.h>
 #include <stdio.h>
