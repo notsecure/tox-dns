@@ -236,15 +236,15 @@ int main(void)
                             noresult();
                         }
 
-                        #define SIZE (TOX3_RESPONSE_SIZE + 10)
+                        #define SIZE (TOXDNS3_RESPONSE_SIZE + 13)
                         *op++ = 0; *op++ = SIZE + 1;
                         *op++ = SIZE;
                         #undef SIZE
 
-                        memcpy(op, "v=tox3;id=", 10); op += 10;
-                        op += TOX3_RESPONSE_SIZE;
+                        memcpy(op, "v=toxdns3;id=", 13); op += 13;
+                        op += TOXDNS3_RESPONSE_SIZE;
 
-                        debug_hard("id: %.*s\n", TOX3_RESPONSE_SIZE, op - TOX3_RESPONSE_SIZE);
+                        debug_hard("id: %.*s\n", TOXDNS3_RESPONSE_SIZE, op - TOXDNS3_RESPONSE_SIZE);
 
                     } else {
                         uint8_t *key;
@@ -252,12 +252,12 @@ int main(void)
                             noresult();
                         }
 
-                        #define SIZE (TOX_ID_SIZE * 2 + 10)
+                        #define SIZE (TOX_ID_SIZE * 2 + 13)
                         *op++ = 0; *op++ = SIZE + 1;
                         *op++ = SIZE;
                         #undef SIZE
 
-                        memcpy(op, "v=tox1;id=", 10); op += 10;
+                        memcpy(op, "v=toxdns1;id=", 13); op += 13;
                         id_to_string(op, key); op += TOX_ID_SIZE * 2;
 
                         debug_hard("id: %.*s\n", TOX_ID_SIZE * 2, op - TOX_ID_SIZE * 2);
